@@ -1,0 +1,58 @@
+- hosts: group1
+  connection: local
+#  become: true
+  vars:
+    cli:
+      host: "192.168.62.192"
+      username: vyos
+      ssh_keyfile: "/Users/shawnho/.ssh/id_rsa.pub"
+      password: vyos
+      transport: cli
+  tasks:
+    - name: Test with a simple shell script
+      shell: pwd; date
+    - name: Configure vyos gateway-address
+      vyos_config: 
+        lines:
+          - set system gateway-address 192.168.62.2
+        provider: "{{ cli }}"        
+    - name: Configure interfaces
+      vyos_config:
+        lines:
+          - set interfaces ethernet eth1 address '192.168.0.1/24'
+          - set interfaces ethernet eth1 description 'Subnet-01'
+          - set interfaces ethernet eth2 address '192.168.1.1/24'
+          - set interfaces ethernet eth2 description 'Subnet-02'
+        provider: "{{ cli }}"   
+    - name: Configure DNAT
+      vyos_config:
+        lines:
+          #- set nat destination rule 10 description 'Port Forward: ssh to 192.168.0.10'
+          - set nat destination rule 10 destination port '2229'
+          - set nat destination rule 10 inbound-interface 'eth0'
+          - set nat destination rule 10 protocol 'tcp'
+          - set nat destination rule 10 translation address '192.168.0.10'
+          - set nat destination rule 10 translation port '22'
+        provider: "{{ cli }}"
+    - name: Configure SNAT
+      vyos_config:
+        lines:
+          - set nat source rule 100 outbound-interface 'eth0'
+          - set nat source rule 100 source address '192.168.0.0/24'
+          - set nat source rule 100 translation address masquerade
+        provider: "{{ cli }}"
+    #- name: run multiple commands and check if version output contains specific version string
+      #vyos_command:
+      #  commands:
+      #    - show version
+      #    - show hardware cpu
+      #  wait_for:
+      #    - "result[0] contains 'VyOS 1.1.7'"
+      #  provider: "{{ cli }}"
+    #- name: show configuration on ethernet interfaces
+    #  vyos_command:
+    #    commands:
+    #      - show interfaces ethernet {{ item }}
+    #    provider: "{{ cli }}"
+    #  with_items:
+    #    - eth0
